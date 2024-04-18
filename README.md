@@ -1,2 +1,3 @@
 # inspector
-K8s plugin for performing basic diagnostics.
+
+`inspector` is a Kubernetes plugin that allows you to run basic cluster diagnostics, collect Ingress Controller logs, and generate reports.
