@@ -1,6 +1,9 @@
 package inspector
 
 import (
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -16,4 +19,13 @@ func (c *Client) ClusterVersion() (string, error) {
 		return "", err
 	}
 	return sv.String(), nil
+}
+
+// ClusterID returns kube-system namespace UID representing K8s clusterID.
+func (c *Client) ClusterID(ctx context.Context) (string, error) {
+	cluster, err := c.K8sClient.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return string(cluster.UID), nil
 }
