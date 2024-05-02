@@ -18,14 +18,16 @@ type Report struct {
 	K8sVersion string
 	ClusterID  string
 	Nodes      int
+	Platform   string
 }
 
 func (r Report) String() string {
 	return fmt.Sprintf(
-		"Version: %s\nClusterID: %s\nNodes: %d\n",
+		"Version: %s\nClusterID: %s\nNodes: %d\nPlatform: %s\n",
 		r.K8sVersion,
 		r.ClusterID,
 		r.Nodes,
+		r.Platform,
 	)
 }
 
@@ -121,11 +123,16 @@ func (c *Client) RunDiagnostic(ctx context.Context, namespace string) {
 	if err != nil {
 		fmt.Fprint(c.Output, err.Error())
 	}
+	p, err := c.Platform(ctx)
+	if err != nil {
+		fmt.Fprint(c.Output, err.Error())
+	}
 
 	report := Report{
 		K8sVersion: version,
 		ClusterID:  id,
 		Nodes:      n,
+		Platform:   p,
 	}
 	c.diagnostics = report
 }

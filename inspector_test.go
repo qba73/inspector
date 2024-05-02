@@ -76,9 +76,9 @@ func TestInspectorCollectsDiagnosticData(t *testing.T) {
 	c := inspector.Client{
 		K8sClient: newTestClientset(
 			kubeSystemNameSpace,
-			clusterNode1,
-			clusterNode2,
-			clusterNode3,
+			nodeAWS,
+			nodeAWS2,
+			nodeAWS3,
 		),
 	}
 	c.Output = io.Discard
@@ -89,6 +89,7 @@ func TestInspectorCollectsDiagnosticData(t *testing.T) {
 		K8sVersion: "v1.29.2",
 		ClusterID:  "421766aa-5d78-4c9e-8736-7faad1f2e927",
 		Nodes:      3,
+		Platform:   "aws",
 	}
 
 	if !cmp.Equal(want, got) {
@@ -532,6 +533,34 @@ var (
 		},
 		Spec: corev1.NodeSpec{
 			ProviderID: "aws:///eu-central-1a/i-088b4f07708408cc0",
+		},
+	}
+
+	nodeAWS2 = &corev1.Node{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "node-aws-2",
+			Namespace: "default",
+		},
+		Spec: corev1.NodeSpec{
+			ProviderID: "aws:///eu-central-1a/i-088b4f07708408ca0",
+		},
+	}
+
+	nodeAWS3 = &corev1.Node{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Node",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "node-aws-3",
+			Namespace: "default",
+		},
+		Spec: corev1.NodeSpec{
+			ProviderID: "aws:///eu-central-1a/i-088b4f07708408va0",
 		},
 	}
 
