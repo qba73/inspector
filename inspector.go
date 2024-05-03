@@ -8,10 +8,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Report struct {
@@ -40,7 +42,6 @@ type Client struct {
 }
 
 func NewClient() *Client {
-	// todo create default k8s clientset from config
 	return &Client{
 		Verbose: false,
 		Output:  os.Stdout,
@@ -137,6 +138,24 @@ func (c *Client) RunDiagnostic(ctx context.Context, namespace string) {
 	c.diagnostics = report
 }
 
+// configDir returns path to the K8s configuration.
+//
+// If user exported the env var XDG_DATA_HOME inspector
+// will use this location to look for k8s config file.
+// If XDG_DATA_HOME is not set inspector looks for k8s config
+// in K8s default directory: $HOME/.kube/.
+func configDir() string {
+	path := os.Getenv("XDG_DATA_HOME")
+	if path != "" {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "."
+	}
+	return home
+}
+
 var usage = `Usage: inspector [-v] namespace
 
 Gather NIC diagnostics for the given namespace
@@ -144,6 +163,7 @@ Gather NIC diagnostics for the given namespace
 In verbose mode (-v), prints out all data points to stdout.`
 
 func Main() int {
+	kubeconfig := flag.String("kubeconfig", filepath.Join(configDir(), ".kube", "config"), "path to the kubeconfig file")
 	verbose := flag.Bool("v", false, "verbose output")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
@@ -151,10 +171,23 @@ func Main() int {
 		return 1
 	}
 	namespace := flag.Args()[0]
+
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		return 1
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		return 1
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	c := NewClient() // todo setup defualt k8s client
+	c := NewClient()
+	c.K8sClient = clientset
 	c.Verbose = *verbose
 
 	go func() {

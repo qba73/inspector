@@ -733,7 +733,7 @@ var (
 	}
 )
 
-// Nodes with missing or malformed PorviderID.
+// Nodes with missing or malformed ProviderID field.
 var (
 	nodeMalformedPlatformID = &corev1.Node{
 		TypeMeta: metav1.TypeMeta{
