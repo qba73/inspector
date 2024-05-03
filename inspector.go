@@ -156,6 +156,33 @@ func configDir() string {
 	return home
 }
 
+func k8sClient(path string) (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", path)
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
+}
+
+// NewClientFromConfig takes a path to the k8s config path
+// and returns inspector client ready to interact with the cluster.
+func NewClientFromConfig(path string) (*Client, error) {
+	k8sClient, err := k8sClient(path)
+	if err != nil {
+		return nil, err
+	}
+	c := Client{
+		Verbose:   false,
+		Output:    os.Stdout,
+		K8sClient: k8sClient,
+	}
+	return &c, nil
+}
+
 var usage = `Usage: inspector [-v] namespace
 
 Gather NIC diagnostics for the given namespace
@@ -172,23 +199,15 @@ func Main() int {
 	}
 	namespace := flag.Args()[0]
 
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	c, err := NewClientFromConfig(*kubeconfig)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", usage)
 		return 1
 	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		return 1
-	}
+	c.Verbose = *verbose
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-
-	c := NewClient()
-	c.K8sClient = clientset
-	c.Verbose = *verbose
 
 	go func() {
 		c.RunDiagnostic(ctx, namespace)
