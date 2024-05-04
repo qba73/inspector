@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Report holds collected data points.
 type Report struct {
 	K8sVersion string
 	ClusterID  string
@@ -25,6 +26,7 @@ type Report struct {
 	Podlogs    string
 }
 
+// String implements stringer interface.
 func (r Report) String() string {
 	const report = "=== Cluster Info ===\nVersion: %s\nClusterID: %s\nNodes: %d\nPlatform: %s\n=== Pods ===\n%s\n=== Pod logs ===\n%s\n"
 	return fmt.Sprintf(report,
@@ -43,7 +45,7 @@ type Client struct {
 	K8sClient kubernetes.Interface
 }
 
-// BuildClientFromKubeConfig inspector client ready to interact with the cluster.
+// BuildClientFromKubeConfig builds inspector client ready to interact with the cluster.
 func BuildClientFromKubeConfig() (*Client, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -133,6 +135,7 @@ func (c *Client) Pods(ctx context.Context, namespace string) (*corev1.PodList, e
 	return pods, nil
 }
 
+// Podlogs returns logs from pods in the given namespace.
 func (c *Client) Podlogs(ctx context.Context, namespace string) (map[string]string, error) {
 	pods, err := c.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -199,9 +202,10 @@ func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 }
 
 var usage = `Usage:
+
 	inspector [-v] namespace
 
-Collect K8s and NIC diagnostics in the given namespace
+Collect K8s and Ingress Controller diagnostics in the given namespace
 
 In verbose mode (-v), prints out progess, steps and all data points to stdout.`
 
