@@ -198,11 +198,12 @@ func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 	}, nil
 }
 
-var usage = `Usage: inspector [-v] namespace
+var usage = `Usage:
+	inspector [-v] namespace
 
-Gather K8s and NIC diagnostics in the given namespace
+Collect K8s and NIC diagnostics in the given namespace
 
-In verbose mode (-v), prints out all data points to stdout.`
+In verbose mode (-v), prints out progess, steps and all data points to stdout.`
 
 func Main() int {
 	verbose := flag.Bool("v", false, "verbose output")
