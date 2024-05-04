@@ -1,6 +1,8 @@
-[![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/qba73/inspector.svg)](https://pkg.go.dev/github.com/qba73/inspector)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/qba73/inspector)
 [![Go Report Card](https://goreportcard.com/badge/github.com/qba73/inspector)](https://goreportcard.com/report/github.com/qba73/inspector)
-
+![GitHub](https://img.shields.io/github/license/qba73/inspector)
+[![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
 
 # inspector
 
