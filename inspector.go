@@ -1,16 +1,16 @@
 package inspector
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
-	"path/filepath"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -21,35 +21,49 @@ type Report struct {
 	ClusterID  string
 	Nodes      int
 	Platform   string
+	Pods       string
+	Podlogs    string
 }
 
 func (r Report) String() string {
-	return fmt.Sprintf(
-		"Version: %s\nClusterID: %s\nNodes: %d\nPlatform: %s\n",
+	const report = "=== Cluster Info ===\nVersion: %s\nClusterID: %s\nNodes: %d\nPlatform: %s\n=== Pods ===\n%s\n=== Pod logs ===\n%s\n"
+	return fmt.Sprintf(report,
 		r.K8sVersion,
 		r.ClusterID,
 		r.Nodes,
 		r.Platform,
+		r.Pods,
+		r.Podlogs,
 	)
 }
 
 // Client represents Inspector client.
 type Client struct {
-	Verbose     bool
-	Output      io.Writer
-	K8sClient   kubernetes.Interface
-	diagnostics Report
+	Verbose   bool
+	K8sClient kubernetes.Interface
 }
 
-func NewClient() *Client {
-	return &Client{
-		Verbose: false,
-		Output:  os.Stdout,
+// BuildClientFromKubeConfig inspector client ready to interact with the cluster.
+func BuildClientFromKubeConfig() (*Client, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (c *Client) Report() Report {
-	return c.diagnostics
+	config, err := clientcmd.BuildConfigFromFlags("", home+"/.kube/config")
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	c := Client{
+		Verbose:   false,
+		K8sClient: clientset,
+	}
+	return &c, nil
 }
 
 // ClusterVersion returns K8s version.
@@ -110,87 +124,87 @@ func (c *Client) Nodes(ctx context.Context) (int, error) {
 	return len(nodes.Items), nil
 }
 
+// Pods returns info about all pods in a given namespace.
+func (c *Client) Pods(ctx context.Context, namespace string) (*corev1.PodList, error) {
+	pods, err := c.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pods, nil
+}
+
+func (c *Client) Podlogs(ctx context.Context, namespace string) (map[string]string, error) {
+	pods, err := c.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	podLogs := make(map[string]string)
+	for _, pod := range pods.Items {
+		for _, container := range pod.Spec.Containers {
+			logReq := c.K8sClient.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+			res, err := logReq.Stream(ctx)
+			if err != nil {
+				return nil, err
+			}
+			buf := &bytes.Buffer{}
+			_, err = io.Copy(buf, res)
+			if err != nil {
+				return nil, err
+			}
+			podLogs[pod.Name+"_"+container.Name] = buf.String()
+		}
+	}
+	return podLogs, nil
+}
+
 // RunDiagnostics collects cluster data points for given namespace.
-func (c *Client) RunDiagnostic(ctx context.Context, namespace string) {
+func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 	version, err := c.ClusterVersion()
 	if err != nil {
-		fmt.Fprint(c.Output, err.Error())
+		return Report{}, err
 	}
 	id, err := c.ClusterID(ctx)
 	if err != nil {
-		fmt.Fprint(c.Output, err.Error())
+		return Report{}, err
 	}
 	n, err := c.Nodes(ctx)
 	if err != nil {
-		fmt.Fprint(c.Output, err.Error())
+		return Report{}, err
 	}
 	p, err := c.Platform(ctx)
 	if err != nil {
-		fmt.Fprint(c.Output, err.Error())
+		return Report{}, err
+	}
+	pods, err := c.Pods(ctx, namespace)
+	if err != nil {
+		return Report{}, err
 	}
 
-	report := Report{
+	pl, err := c.Podlogs(ctx, namespace)
+	if err != nil {
+		return Report{}, err
+	}
+	var podl strings.Builder
+	for k, v := range pl {
+		podl.WriteString(fmt.Sprintf("%s\n%s\n", k, v))
+	}
+	return Report{
 		K8sVersion: version,
 		ClusterID:  id,
 		Nodes:      n,
 		Platform:   p,
-	}
-	c.diagnostics = report
-}
-
-// configDir returns path to the K8s configuration.
-//
-// If user exported the env var XDG_DATA_HOME inspector
-// will use this location to look for k8s config file.
-// If XDG_DATA_HOME is not set inspector looks for k8s config
-// in K8s default directory: $HOME/.kube/.
-func configDir() string {
-	path := os.Getenv("XDG_DATA_HOME")
-	if path != "" {
-		return path
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "."
-	}
-	return home
-}
-
-func k8sClient(path string) (*kubernetes.Clientset, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", path)
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return clientset, nil
-}
-
-// NewClientFromConfig takes a path to the k8s config path
-// and returns inspector client ready to interact with the cluster.
-func NewClientFromConfig(path string) (*Client, error) {
-	k8sClient, err := k8sClient(path)
-	if err != nil {
-		return nil, err
-	}
-	c := Client{
-		Verbose:   false,
-		Output:    os.Stdout,
-		K8sClient: k8sClient,
-	}
-	return &c, nil
+		Pods:       pods.String(),
+		Podlogs:    podl.String(),
+	}, nil
 }
 
 var usage = `Usage: inspector [-v] namespace
 
-Gather NIC diagnostics for the given namespace
+Gather K8s and NIC diagnostics in the given namespace
 
 In verbose mode (-v), prints out all data points to stdout.`
 
 func Main() int {
-	kubeconfig := flag.String("kubeconfig", filepath.Join(configDir(), ".kube", "config"), "path to the kubeconfig file")
 	verbose := flag.Bool("v", false, "verbose output")
 	flag.Parse()
 	if len(flag.Args()) == 0 {
@@ -199,23 +213,18 @@ func Main() int {
 	}
 	namespace := flag.Args()[0]
 
-	c, err := NewClientFromConfig(*kubeconfig)
+	c, err := BuildClientFromKubeConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", usage)
 		return 1
 	}
 	c.Verbose = *verbose
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
-	go func() {
-		c.RunDiagnostic(ctx, namespace)
-		cancel()
-	}()
-	<-ctx.Done()
-
-	report := c.Report()
-	fmt.Fprintf(os.Stdout, "%s\n", report)
+	report, err := c.Report(context.Background(), namespace)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", usage)
+		return 1
+	}
+	fmt.Println(report)
 	return 0
 }

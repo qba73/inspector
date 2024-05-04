@@ -2,7 +2,6 @@ package inspector_test
 
 import (
 	"context"
-	"io"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -81,15 +81,17 @@ func TestInspectorCollectsDiagnosticData(t *testing.T) {
 			nodeAWS3,
 		),
 	}
-	c.Output = io.Discard
-	c.RunDiagnostic(context.Background(), "default")
+	got, err := c.Report(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	got := c.Report()
 	want := inspector.Report{
 		K8sVersion: "v1.29.2",
 		ClusterID:  "421766aa-5d78-4c9e-8736-7faad1f2e927",
 		Nodes:      3,
 		Platform:   "aws",
+		Pods:       podListEmpty.String(),
 	}
 
 	if !cmp.Equal(want, got) {
@@ -457,6 +459,117 @@ func TestInspectorDeterminesUnknownPlatformOnMalformedPartialPlatformIDField(t *
 	}
 }
 
+func TestInspectorListsPodsInNotExistingNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			kubeSystemNameSpace,
+			nginxIngressNameSpace,
+			pod1,
+		),
+	}
+	got, err := c.Pods(context.Background(), "notExistingNamespace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.PodList{}
+	if !cmp.Equal(want, got) {
+		t.Errorf(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsNotExistingPodsInDefaultNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			kubeSystemNameSpace,
+			defaultNameSpace,
+		),
+	}
+	got, err := c.Pods(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.PodList{}
+	if !cmp.Equal(want, got) {
+		t.Errorf(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsExistingPodsInDefaultNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			kubeSystemNameSpace,
+			defaultNameSpace,
+			podDefaultNamespace,
+		),
+	}
+	got, err := c.Pods(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := podListDefaultNamespace
+	if !cmp.Equal(want, got) {
+		t.Errorf(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsEventsOccuredInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsConfigMapsInGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsServicesInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsLeasesInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorListsCustomResourceDefinitions(t *testing.T) {
+	t.Parallel()
+
+}
+
+func TestInspectorCollectsMetricsFromNodes(t *testing.T) {
+	t.Parallel()
+}
+
+func TestInspectorCollectsHelmInformation(t *testing.T) {
+	t.Parallel()
+}
+
+func TestInspectorCollectsHelmDeployments(t *testing.T) {
+	t.Parallel()
+}
+
 // newTestClientset takes K8s runtime objects and returns a k8s fake clientset.
 func newTestClientset(objects ...k8sruntime.Object) *testClient.Clientset {
 	client := testClient.NewSimpleClientset(objects...)
@@ -476,6 +589,30 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "kube-system",
 			UID:  "421766aa-5d78-4c9e-8736-7faad1f2e927",
+		},
+		Spec: corev1.NamespaceSpec{},
+	}
+
+	defaultNameSpace = &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+			UID:  "121766aa-5d78-4c9e-8736-7faad1f2e345",
+		},
+		Spec: corev1.NamespaceSpec{},
+	}
+
+	nginxIngressNameSpace = &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nginx-ingress",
+			UID:  "441766aa-5d78-4c9e-8736-7faad1f2e987",
 		},
 		Spec: corev1.NamespaceSpec{},
 	}
@@ -789,5 +926,141 @@ var (
 		Spec: corev1.NodeSpec{
 			ProviderID: " ",
 		},
+	}
+)
+
+var (
+	replicaSetID = "239766ff-5a78-4a1e-8736-7faad1f2e122"
+	daemonSetID  = "319766ff-5c78-4a9a-8736-7faad1f2e234"
+)
+
+// Pods for testing.
+var (
+	pod1 = &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nginx-ingress",
+			Namespace: "nginx-ingress",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "ReplicaSet",
+					Name: "nginx-ingress",
+					UID:  types.UID(replicaSetID),
+				},
+			},
+			Labels: map[string]string{
+				"app":                    "nginx-ingress",
+				"app.kubernetes.io/name": "nginx-ingress",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            "nginx-ingress",
+					Image:           "nginx-ingress",
+					ImagePullPolicy: "Always",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "POD_NAMESPACE",
+							Value: "nginx-ingress",
+						},
+						{
+							Name:  "POD_NAME",
+							Value: "nginx-ingress",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pod2 = &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nginx-ingress-2",
+			Namespace: "nginx-ingress",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "DaemonSet",
+					Name: "nginx-ingress",
+					UID:  types.UID(daemonSetID),
+				},
+			},
+			Labels: map[string]string{
+				"app":                    "nginx-ingress",
+				"app.kubernetes.io/name": "nginx-ingress",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            "nginx-ingress",
+					Image:           "nginx-ingress",
+					ImagePullPolicy: "Always",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "POD_NAMESPACE",
+							Value: "nginx-ingress",
+						},
+						{
+							Name:  "POD_NAME",
+							Value: "nginx-ingress",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	podDefaultNamespace = &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "inspector",
+			Namespace:       "default",
+			OwnerReferences: []metav1.OwnerReference{},
+			Labels: map[string]string{
+				"app":                    "inspector",
+				"app.kubernetes.io/name": "inspector",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            "inspector",
+					Image:           "inspector",
+					ImagePullPolicy: "Always",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "POD_NAMESPACE",
+							Value: "default",
+						},
+						{
+							Name:  "POD_NAME",
+							Value: "inspector",
+						},
+					},
+				},
+			},
+		},
+	}
+)
+
+// List of pods in defualt namespace.
+var (
+	podListDefaultNamespace = &corev1.PodList{
+		Items: []corev1.Pod{*podDefaultNamespace},
+	}
+
+	podListEmpty = &corev1.PodList{
+		Items: []corev1.Pod{},
 	}
 )
