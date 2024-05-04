@@ -1054,7 +1054,7 @@ var (
 	}
 )
 
-// List of pods in defualt namespace.
+// List of pods in default namespace.
 var (
 	podListDefaultNamespace = &corev1.PodList{
 		Items: []corev1.Pod{*podDefaultNamespace},
