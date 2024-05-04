@@ -1,4 +1,6 @@
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/qba73/inspector)](https://goreportcard.com/report/github.com/qba73/inspector)
+
 
 
 # inspector
