@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	coordv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -69,35 +70,6 @@ func TestInspectorCollectsNumberOfNodesInTheCluster(t *testing.T) {
 	want := 3
 	if want != got {
 		t.Errorf("want %d, got %d", want, got)
-	}
-}
-
-func TestInspectorCollectsDiagnosticData(t *testing.T) {
-	t.Parallel()
-
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeAWS,
-			nodeAWS2,
-			nodeAWS3,
-		),
-	}
-	got, err := c.Report(context.Background(), "default")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := inspector.Report{
-		K8sVersion: "v1.29.2",
-		ClusterID:  "421766aa-5d78-4c9e-8736-7faad1f2e927",
-		Nodes:      3,
-		Platform:   "aws",
-		Pods:       podListEmpty.String(),
-	}
-
-	if !cmp.Equal(want, got) {
-		t.Errorf(cmp.Diff(want, got))
 	}
 }
 
@@ -916,6 +888,78 @@ func TestInspectorListsNotExistingLeasesInAGivenNamespace(t *testing.T) {
 	}
 }
 
+func TestInspectorListIngressClasses(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			nginxIngressNameSpace,
+			ingressClass,
+		),
+	}
+	got, err := c.IngressClasses(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &netv1.IngressClassList{
+		Items: []netv1.IngressClass{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "IngressClass",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "nginx",
+				},
+				Spec: netv1.IngressClassSpec{
+					Controller: "nginx.org/ingress-controller",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListIngresses(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			nginxIngressNameSpace,
+			ingress,
+		),
+	}
+	got, err := c.Ingresses(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ingressClassName := "nginx"
+	want := &netv1.IngressList{
+		Items: []netv1.Ingress{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "hello-ingress",
+					Namespace: "default",
+				},
+				Spec: netv1.IngressSpec{
+					IngressClassName: &ingressClassName,
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
 func TestInspectorListsCustomResourceDefinitions(t *testing.T) {
 	t.Parallel()
 
@@ -1589,3 +1633,34 @@ var lease = &coordv1.Lease{
 	},
 	Spec: coordv1.LeaseSpec{},
 }
+
+// IngressClass and Ingress for testing.
+var (
+	ingressClass = &netv1.IngressClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressClass",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nginx",
+		},
+		Spec: netv1.IngressClassSpec{
+			Controller: "nginx.org/ingress-controller",
+		},
+	}
+
+	ingressClassName = "nginx"
+	ingress          = &netv1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "hello-ingress",
+			Namespace: "default",
+		},
+		Spec: netv1.IngressSpec{
+			IngressClassName: &ingressClassName,
+		},
+	}
+)

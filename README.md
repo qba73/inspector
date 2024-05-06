@@ -24,27 +24,11 @@ inspector
 
 ```shell
 Usage:
-   inspector [-v] namespace
+   inspector [-v] [-h] -n namespace
 
 Collect K8s and NIC diagnostics in the given namespace
 
 In verbose mode (-v), prints out progess, steps and all data points to stdout.
-```
-
-```shell
-inspector default
-```
-
-```shell
-=== Cluster Info ===
-Version: v1.29.2
-ClusterID: f66852d1-6d39-40a9-b4c7-c05e39d22332
-Nodes: 1
-Platform: kind
-=== Pods ===
-&PodList{ListMeta:{ 11582  <nil>},Items:[]Pod{},}
-=== Pod logs ===
-...
 ```
 
 ## How it works
@@ -63,9 +47,6 @@ Currently collected data:
 - Logs from pods
 - Events
 - ConfigMaps
-
-Planned:
-
 - Services
 - Deployments
 - StatefulSets
@@ -75,6 +56,9 @@ Planned:
 - IngressClasses
 - Ingresses
 - IngressAnnotations
+
+Planned:
+
 - Nodes metrics
 - Ingress Controller stats, options and configuration
 
