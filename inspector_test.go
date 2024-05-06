@@ -644,9 +644,67 @@ func TestInspectorListsEmptyConfigMapListOnNamespaceWithoutConfigMaps(t *testing
 	}
 }
 
-func TestInspectorListsServicesInAGivenNamespace(t *testing.T) {
+func TestInspectorListsExistingServicesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			teaServiceDefaultNS,
+			coffeeServiceDefaultNS,
+		),
+	}
+	got, err := c.Services(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.ServiceList{
+		Items: []corev1.Service{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-coffee",
+					Namespace: "default",
+				},
+			},
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "service-tea",
+					Namespace: "default",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsNotExistingServicesInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+		),
+	}
+	got, err := c.Services(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.ServiceList{
+		Items: nil,
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
@@ -1182,6 +1240,7 @@ var (
 	}
 )
 
+// K8s Events used for testing.
 var (
 	event1 = &corev1.Event{
 		TypeMeta: metav1.TypeMeta{
@@ -1208,38 +1267,10 @@ var (
 		Reason:  "Updated",
 		Message: "Configuration from nginx-ingress/nginx-config was updated ",
 	}
-
-	eventList = &corev1.EventList{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "EventList",
-			APIVersion: "v1",
-		},
-		ListMeta: metav1.ListMeta{},
-		Items:    []corev1.Event{*event1, *event2},
-	}
 )
 
+// Config Maps used for testing.
 var (
-	configMapList = &corev1.ConfigMapList{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "List",
-			APIVersion: "v1",
-		},
-		ListMeta: metav1.ListMeta{},
-		Items: []corev1.ConfigMap{
-			{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ConfigMap",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "nginx-config",
-					Namespace: "nginx-config",
-				},
-			},
-		},
-	}
-
 	configMapNginxIngress = &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -1250,5 +1281,41 @@ var (
 			Namespace: "nginx-ingress",
 		},
 		Data: map[string]string{"testdata": "hello inspector!"},
+	}
+)
+
+// Services used for testing.
+var (
+	coffeeServiceDefaultNS = &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "service-coffee",
+			Namespace: "default",
+		},
+	}
+
+	teaServiceDefaultNS = &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "service-tea",
+			Namespace: "default",
+		},
+	}
+
+	waterServiceWaterNS = &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "service-water",
+			Namespace: "water",
+		},
 	}
 )
