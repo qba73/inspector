@@ -61,11 +61,11 @@ Currently collected data:
 - K8s platform name
 - Pods
 - Logs from pods
+- Events
+- ConfigMaps
 
 Planned:
 
-- Events
-- ConfigMaps
 - Services
 - Deployments
 - StatefulSets
