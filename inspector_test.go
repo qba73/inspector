@@ -835,6 +835,33 @@ func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			replicaSet,
+		),
+	}
+	got, err := c.ReplicaSets(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &appsv1.ReplicaSetList{
+		Items: []appsv1.ReplicaSet{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ReplicaSet",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "replica",
+					Namespace: "default",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsLeasesInAGivenNamespace(t *testing.T) {
@@ -1488,4 +1515,17 @@ var statefulSet = &appsv1.StatefulSet{
 		Namespace: "default",
 	},
 	Spec: appsv1.StatefulSetSpec{},
+}
+
+// ReplicaSet used for testing.
+var replicaSet = &appsv1.ReplicaSet{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "ReplicaSet",
+		APIVersion: "v1",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "replica",
+		Namespace: "default",
+	},
+	Spec: appsv1.ReplicaSetSpec{},
 }
