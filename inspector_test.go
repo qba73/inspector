@@ -521,11 +521,127 @@ func TestInspectorListsExistingPodsInDefaultNamespace(t *testing.T) {
 func TestInspectorListsEventsOccuredInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			event1,
+			event2,
+		),
+	}
+	got, err := c.Events(context.Background(), "nginx-ingress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.EventList{
+		Items: []corev1.Event{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Event",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nginx-config.17cca449e4d825fa",
+					Namespace: "nginx-ingress",
+				},
+				Reason:  "Updated",
+				Message: "Configuration from nginx-ingress/nginx-config was updated ",
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsNoEventsOccuredInNotExistingNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			event1,
+			event2,
+		),
+	}
+	got, err := c.Events(context.Background(), "notExistingNamespace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.EventList{
+		Items: nil,
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsNoEventsOccuredInExistingNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+		),
+	}
+	got, err := c.Events(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.EventList{
+		Items: nil,
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsConfigMapsInGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			nginxIngressNameSpace,
+			configMapNginxIngress,
+		),
+	}
+	got, err := c.ConfigMaps(context.Background(), "nginx-ingress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.ConfigMapList{
+		Items: []corev1.ConfigMap{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nginx-config",
+					Namespace: "nginx-ingress",
+				},
+				Data: map[string]string{"testdata": "hello inspector!"},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsEmptyConfigMapListOnNamespaceWithoutConfigMaps(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			nginxIngressNameSpace,
+		),
+	}
+	got, err := c.ConfigMaps(context.Background(), "nginx-ingress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &corev1.ConfigMapList{}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsServicesInAGivenNamespace(t *testing.T) {
@@ -611,8 +727,9 @@ var (
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nginx-ingress",
-			UID:  "441766aa-5d78-4c9e-8736-7faad1f2e987",
+			Name:      "nginx-ingress",
+			Namespace: "nginx-ingress",
+			UID:       "441766aa-5d78-4c9e-8736-7faad1f2e987",
 		},
 		Spec: corev1.NamespaceSpec{},
 	}
@@ -1062,5 +1179,76 @@ var (
 
 	podListEmpty = &corev1.PodList{
 		Items: []corev1.Pod{},
+	}
+)
+
+var (
+	event1 = &corev1.Event{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Event",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test event",
+			Namespace: "default",
+		},
+		Reason:  "Updated",
+		Message: "human readable message",
+	}
+
+	event2 = &corev1.Event{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Event",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nginx-config.17cca449e4d825fa",
+			Namespace: "nginx-ingress",
+		},
+		Reason:  "Updated",
+		Message: "Configuration from nginx-ingress/nginx-config was updated ",
+	}
+
+	eventList = &corev1.EventList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EventList",
+			APIVersion: "v1",
+		},
+		ListMeta: metav1.ListMeta{},
+		Items:    []corev1.Event{*event1, *event2},
+	}
+)
+
+var (
+	configMapList = &corev1.ConfigMapList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "List",
+			APIVersion: "v1",
+		},
+		ListMeta: metav1.ListMeta{},
+		Items: []corev1.ConfigMap{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nginx-config",
+					Namespace: "nginx-config",
+				},
+			},
+		},
+	}
+
+	configMapNginxIngress = &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "nginx-config",
+			Namespace: "nginx-ingress",
+		},
+		Data: map[string]string{"testdata": "hello inspector!"},
 	}
 )

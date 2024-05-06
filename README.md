@@ -6,6 +6,8 @@
 
 # inspector
 
+Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/tasks/tools/) binary installed and configured (config file `${HOME}/.kube/config`).
+
 `inspector` is a CLI tool and a Kubernetes plugin for running cluster diagnostics, collecting cluster and Ingress Controller logs and diagnostics, and generating reports.
 
 Here's how to install it and use as a CLI tool:
@@ -13,8 +15,6 @@ Here's how to install it and use as a CLI tool:
 ```shell
 go install github.com/qba73/inspector/cmd/inspector@latest
 ```
-
-`inspector` requires `kubectl` and the config file `${HOME}/.kube/config`.
 
 To run it:
 

@@ -10,7 +10,14 @@ import (
 	"os"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
+	coordv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	crd "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -41,8 +48,10 @@ func (r Report) String() string {
 
 // Client represents Inspector client.
 type Client struct {
-	Verbose   bool
-	K8sClient kubernetes.Interface
+	Verbose       bool
+	K8sClient     kubernetes.Interface
+	CRDClient     *crd.Clientset
+	MetricsClient *metrics.Clientset
 }
 
 // BuildClientFromKubeConfig builds inspector client ready to interact with the cluster.
@@ -51,19 +60,28 @@ func BuildClientFromKubeConfig() (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	config, err := clientcmd.BuildConfigFromFlags("", home+"/.kube/config")
 	if err != nil {
 		return nil, err
 	}
-	clientset, err := kubernetes.NewForConfig(config)
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	crdClient, err := crd.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	metricsClient, err := metrics.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
 	c := Client{
-		Verbose:   false,
-		K8sClient: clientset,
+		Verbose:       false,
+		K8sClient:     kubeClient,
+		CRDClient:     crdClient,
+		MetricsClient: metricsClient,
 	}
 	return &c, nil
 }
@@ -160,6 +178,96 @@ func (c *Client) Podlogs(ctx context.Context, namespace string) (map[string]stri
 	return podLogs, nil
 }
 
+// Events returns events from given namespace.
+func (c *Client) Events(ctx context.Context, namespace string) (*corev1.EventList, error) {
+	events, err := c.K8sClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
+func (c *Client) ConfigMaps(ctx context.Context, namespace string) (*corev1.ConfigMapList, error) {
+	cm, err := c.K8sClient.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// json.MarshalIndent(cm, "", "  ")
+	return cm, nil
+}
+
+func (c *Client) Services(ctx context.Context, namespace string) (*corev1.ServiceList, error) {
+	sl, err := c.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return sl, nil
+}
+
+func (c *Client) Deployments(ctx context.Context, namespace string) (*appsv1.DeploymentList, error) {
+	dl, err := c.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return dl, nil
+}
+
+func (c *Client) StatefulSets(ctx context.Context, namespace string) (*appsv1.StatefulSetList, error) {
+	ss, err := c.K8sClient.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ss, nil
+}
+
+func (c *Client) ReplicaSets(ctx context.Context, namespace string) (*appsv1.ReplicaSetList, error) {
+	rs, err := c.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return rs, nil
+}
+
+func (c *Client) Leases(ctx context.Context, namespace string) (*coordv1.LeaseList, error) {
+	leases, err := c.K8sClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return leases, nil
+}
+
+func (c *Client) CustomResourceDefinitions(ctx context.Context) (*apiextv1.CustomResourceDefinitionList, error) {
+	crds, err := c.CRDClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return crds, nil
+}
+
+func (c *Client) ClusterNodes(ctx context.Context) (*corev1.NodeList, error) {
+	nodes, err := c.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
+
+func (c *Client) NodeMetrics(ctx context.Context) (*v1beta1.NodeMetricsList, error) {
+	metrics, err := c.MetricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return metrics, nil
+}
+
+func (c *Client) PodMetrics(ctx context.Context, namespace string) (*v1beta1.PodMetricsList, error) {
+	metrics, err := c.MetricsClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return metrics, nil
+}
+
 // RunDiagnostics collects cluster data points for given namespace.
 func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 	version, err := c.ClusterVersion()
@@ -203,20 +311,16 @@ func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 
 var usage = `Usage:
 
-	inspector [-v] namespace
+	inspector [-v] [-n] namespace
 
-Collect K8s and Ingress Controller diagnostics in the given namespace
+Collect K8s and Ingress Controller diagnostics in the given namespace.
 
 In verbose mode (-v), prints out progess, steps and all data points to stdout.`
 
 func Main() int {
+	namespace := flag.String("n", "default", "K8s namespace")
 	verbose := flag.Bool("v", false, "verbose output")
 	flag.Parse()
-	if len(flag.Args()) == 0 {
-		fmt.Fprintf(os.Stderr, "%s\n", usage)
-		return 1
-	}
-	namespace := flag.Args()[0]
 
 	c, err := BuildClientFromKubeConfig()
 	if err != nil {
@@ -225,7 +329,7 @@ func Main() int {
 	}
 	c.Verbose = *verbose
 
-	report, err := c.Report(context.Background(), namespace)
+	report, err := c.Report(context.Background(), *namespace)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", usage)
 		return 1
