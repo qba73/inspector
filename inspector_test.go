@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 
 	appsv1 "k8s.io/api/apps/v1"
+	coordv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -867,6 +868,52 @@ func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsLeasesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			nginxIngressNameSpace,
+			lease,
+		),
+	}
+	got, err := c.Leases(context.Background(), "nginx-ingress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &coordv1.LeaseList{
+		Items: []coordv1.Lease{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Lease",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "nginx-ingress-leader-election",
+					Namespace: "nginx-ingress",
+				},
+				Spec: coordv1.LeaseSpec{},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
+func TestInspectorListsNotExistingLeasesInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			nginxIngressNameSpace,
+		),
+	}
+	got, err := c.Leases(context.Background(), "nginx-ingress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &coordv1.LeaseList{}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsCustomResourceDefinitions(t *testing.T) {
@@ -1528,4 +1575,17 @@ var replicaSet = &appsv1.ReplicaSet{
 		Namespace: "default",
 	},
 	Spec: appsv1.ReplicaSetSpec{},
+}
+
+// Lease used for testing.
+var lease = &coordv1.Lease{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "Lease",
+		APIVersion: "v1",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "nginx-ingress-leader-election",
+		Namespace: "nginx-ingress",
+	},
+	Spec: coordv1.LeaseSpec{},
 }
