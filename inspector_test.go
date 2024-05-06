@@ -782,9 +782,54 @@ func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
 	}
 }
 
+func TestInspectorListsNotExistingStatefulSetsInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+		),
+	}
+	got, err := c.StatefulSets(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &appsv1.StatefulSetList{}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
 func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			statefulSet,
+		),
+	}
+	got, err := c.StatefulSets(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &appsv1.StatefulSetList{
+		Items: []appsv1.StatefulSet{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "StatefulSet",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "web",
+					Namespace: "default",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
@@ -1431,3 +1476,16 @@ var (
 		Status: appsv1.DeploymentStatus{},
 	}
 )
+
+// StatefulSet used for testing.
+var statefulSet = &appsv1.StatefulSet{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "StatefulSet",
+		APIVersion: "v1",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "web",
+		Namespace: "default",
+	},
+	Spec: appsv1.StatefulSetSpec{},
+}
