@@ -8,6 +8,7 @@ import (
 	"github.com/qba73/inspector"
 	"k8s.io/apimachinery/pkg/version"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -707,9 +708,78 @@ func TestInspectorListsNotExistingServicesInAGivenNamespace(t *testing.T) {
 	}
 }
 
+func TestInspectorListsNotExistingDeploymentsInAGivenNamespace(t *testing.T) {
+	t.Parallel()
+
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+		),
+	}
+	got, err := c.Deployments(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &appsv1.DeploymentList{}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
 func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
+	c := inspector.Client{
+		K8sClient: newTestClientset(
+			defaultNameSpace,
+			fooBarNameSpace,
+			deploymentDefaultNS,
+			deploymentFooBarNS,
+		),
+	}
+	got, err := c.Deployments(context.Background(), "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &appsv1.DeploymentList{
+		Items: []appsv1.Deployment{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-deployment",
+					Namespace: "default",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+
+	got, err = c.Deployments(context.Background(), "foobar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = &appsv1.DeploymentList{
+		Items: []appsv1.Deployment{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foobar-deployment",
+					Namespace: "foobar",
+				},
+			},
+		},
+	}
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
 }
 
 func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
@@ -788,6 +858,19 @@ var (
 			Name:      "nginx-ingress",
 			Namespace: "nginx-ingress",
 			UID:       "441766aa-5d78-4c9e-8736-7faad1f2e987",
+		},
+		Spec: corev1.NamespaceSpec{},
+	}
+
+	fooBarNameSpace = &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foobar",
+			Namespace: "foobar",
+			UID:       "541766aa-5d78-4c9e-8736-7faad1f2e864",
 		},
 		Spec: corev1.NamespaceSpec{},
 	}
@@ -1317,5 +1400,34 @@ var (
 			Name:      "service-water",
 			Namespace: "water",
 		},
+	}
+)
+
+// Deployments used for testing.
+var (
+	deploymentDefaultNS = &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-deployment",
+			Namespace: "default",
+		},
+		Spec:   appsv1.DeploymentSpec{},
+		Status: appsv1.DeploymentStatus{},
+	}
+
+	deploymentFooBarNS = &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foobar-deployment",
+			Namespace: "foobar",
+		},
+		Spec:   appsv1.DeploymentSpec{},
+		Status: appsv1.DeploymentStatus{},
 	}
 )

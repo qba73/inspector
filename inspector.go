@@ -188,44 +188,44 @@ func (c *Client) Events(ctx context.Context, namespace string) (*corev1.EventLis
 }
 
 func (c *Client) ConfigMaps(ctx context.Context, namespace string) (*corev1.ConfigMapList, error) {
-	cm, err := c.K8sClient.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	configMaps, err := c.K8sClient.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	// json.MarshalIndent(cm, "", "  ")
-	return cm, nil
+	return configMaps, nil
 }
 
 func (c *Client) Services(ctx context.Context, namespace string) (*corev1.ServiceList, error) {
-	sl, err := c.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	services, err := c.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return sl, nil
+	return services, nil
 }
 
 func (c *Client) Deployments(ctx context.Context, namespace string) (*appsv1.DeploymentList, error) {
-	dl, err := c.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	deployments, err := c.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return dl, nil
+	return deployments, nil
 }
 
 func (c *Client) StatefulSets(ctx context.Context, namespace string) (*appsv1.StatefulSetList, error) {
-	ss, err := c.K8sClient.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+	statefulSets, err := c.K8sClient.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return ss, nil
+	return statefulSets, nil
 }
 
 func (c *Client) ReplicaSets(ctx context.Context, namespace string) (*appsv1.ReplicaSetList, error) {
-	rs, err := c.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	replicaSets, err := c.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return rs, nil
+	return replicaSets, nil
 }
 
 func (c *Client) Leases(ctx context.Context, namespace string) (*coordv1.LeaseList, error) {
