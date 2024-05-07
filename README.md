@@ -92,13 +92,13 @@ Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/t
    Note that `inspector`'s default namespace is `default`.
 
    ```shell
-   inspector > default.json
+   kubectl inspector > default.json
    ```
 
 1) Collect data points from `nginx-ingress` namespace
 
    ```shell
-   inspector -n nginx-ingress > nginx-ingress.json
+   kubectl inspector -n nginx-ingress > nginx-ingress.json
    ```
 
 ## How it works
