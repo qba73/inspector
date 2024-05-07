@@ -6,6 +6,8 @@
 ![GitHub](https://img.shields.io/github/license/qba73/inspector)
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
 
+![Magical gopher logo](img/inspectork.png)
+
 Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/tasks/tools/) binary installed and configured (config file `${HOME}/.kube/config`).
 
 `inspector` is a CLI tool and a [Kubernetes plugin](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/) for running Cluster and Ingress Conroller diagnostics, collecting Cluster and Ingress Controller logs and generating reports.
@@ -138,3 +140,5 @@ Future releases will add support for collecting [K8s Gateway API](https://kubern
 ## Contributing
 
 If you'd like to contribute to **Inspector**, please read the [Contributing guide](CONTRIBUTING.md).
+
+Gopher image by [Gopherize.me](https://gopherize.me)
