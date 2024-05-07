@@ -6,7 +6,6 @@
 ![GitHub](https://img.shields.io/github/license/qba73/inspector)
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
 
-<https://github.com/qba73/inspector/blob/main/img/inspectork.png>
 ![Magical gopher logo](img/inspectork.png)
 
 Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/tasks/tools/) binary installed and configured (config file `${HOME}/.kube/config`).
