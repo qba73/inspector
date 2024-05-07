@@ -23,10 +23,8 @@ import (
 func TestInspectorCollectsK8sVersion(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(),
-	}
-	got, err := c.ClusterVersion()
+	i := newTestInspector()
+	got, err := i.ClusterVersion()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,9 +37,7 @@ func TestInspectorCollectsK8sVersion(t *testing.T) {
 func TestInspectorCollectsK8sClusterID(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(kubeSystemNameSpace),
-	}
+	c := newTestInspector(kubeSystemNameSpace)
 	got, err := c.ClusterID(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -55,15 +51,13 @@ func TestInspectorCollectsK8sClusterID(t *testing.T) {
 func TestInspectorCollectsNumberOfNodesInTheCluster(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			clusterNode1,
-			clusterNode2,
-			clusterNode3,
-		),
-	}
-	got, err := c.Nodes(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		clusterNode1,
+		clusterNode2,
+		clusterNode3,
+	)
+	got, err := i.Nodes(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,17 +70,11 @@ func TestInspectorCollectsNumberOfNodesInTheCluster(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnAWSNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeAWS,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(kubeSystemNameSpace, nodeAWS)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "aws"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -96,17 +84,11 @@ func TestInspectorCollectsPlatformNameOnAWSNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnAzureNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeAzure,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(kubeSystemNameSpace, nodeAzure)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "azure"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -116,17 +98,11 @@ func TestInspectorCollectsPlatformNameOnAzureNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnGCPNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeGCP,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(kubeSystemNameSpace, nodeGCP)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "gce"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -136,17 +112,11 @@ func TestInspectorCollectsPlatformNameOnGCPNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnKindNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeKind,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(kubeSystemNameSpace, nodeKind)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "kind"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -156,17 +126,14 @@ func TestInspectorCollectsPlatformNameOnKindNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnVSphereNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeVSphere,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeVSphere,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "vsphere"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -176,17 +143,14 @@ func TestInspectorCollectsPlatformNameOnVSphereNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnK3SNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeK3S,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeK3S,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "k3s"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -196,17 +160,14 @@ func TestInspectorCollectsPlatformNameOnK3SNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnIBMCloudNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeIBMCloud,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeIBMCloud,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "ibmcloud"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -216,17 +177,14 @@ func TestInspectorCollectsPlatformNameOnIBMCloudNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnIBMPowerNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeIBMPowerVS,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeIBMPowerVS,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "ibmpowervs"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -236,13 +194,11 @@ func TestInspectorCollectsPlatformNameOnIBMPowerNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnCloudStackNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeCloudStack,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeCloudStack,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,17 +212,14 @@ func TestInspectorCollectsPlatformNameOnCloudStackNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnOpenStackNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeOpenStack,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeOpenStack,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "openstack"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -276,17 +229,14 @@ func TestInspectorCollectsPlatformNameOnOpenStackNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnDigitalOceanNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeDigitalOcean,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeDigitalOcean,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "digitalocean"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -296,17 +246,14 @@ func TestInspectorCollectsPlatformNameOnDigitalOceanNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnEquinixMetallNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeEquinixMetal,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeEquinixMetal,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "equinixmetal"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -316,17 +263,14 @@ func TestInspectorCollectsPlatformNameOnEquinixMetallNode(t *testing.T) {
 func TestInspectorCollectsPlatformNameOnAlibabaNode(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeAlibaba,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeAlibaba,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "alicloud"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -336,17 +280,14 @@ func TestInspectorCollectsPlatformNameOnAlibabaNode(t *testing.T) {
 func TestInspectorDeterminesUnknownPlatformOnMissingPlatformIDField(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeMalformedBlankPlatformID,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeMalformedBlankPlatformID,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "unknown"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -356,17 +297,14 @@ func TestInspectorDeterminesUnknownPlatformOnMissingPlatformIDField(t *testing.T
 func TestInspectorDeterminesUnknownPlatformOnMalformedPlatformIDField(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeMalformedPlatformID,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeMalformedPlatformID,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "//4232e3c7-d83c-d72b-758c-71d07a3d9310"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -376,17 +314,14 @@ func TestInspectorDeterminesUnknownPlatformOnMalformedPlatformIDField(t *testing
 func TestInspectorDeterminesUnknownPlatformOnMalformedBlankPlatformIDField(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeMalformedBlankPlatformID,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeMalformedBlankPlatformID,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "unknown"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -396,17 +331,14 @@ func TestInspectorDeterminesUnknownPlatformOnMalformedBlankPlatformIDField(t *te
 func TestInspectorDeterminesUnknownPlatformOnMalformedEmptyPlatformIDField(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeMalformedEmptyPlatformID,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nodeMalformedEmptyPlatformID,
+	)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "unknown"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -416,17 +348,11 @@ func TestInspectorDeterminesUnknownPlatformOnMalformedEmptyPlatformIDField(t *te
 func TestInspectorDeterminesUnknownPlatformOnMalformedPartialPlatformIDField(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nodeMalformedPartialPlatformID,
-		),
-	}
-	got, err := c.Platform(context.Background())
+	i := newTestInspector(kubeSystemNameSpace, nodeMalformedPartialPlatformID)
+	got, err := i.Platform(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	want := "unknown"
 	if want != got {
 		t.Errorf("want %s, got %s", want, got)
@@ -436,14 +362,12 @@ func TestInspectorDeterminesUnknownPlatformOnMalformedPartialPlatformIDField(t *
 func TestInspectorListsPodsInNotExistingNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			nginxIngressNameSpace,
-			pod1,
-		),
-	}
-	got, err := c.Pods(context.Background(), "notExistingNamespace")
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		nginxIngressNameSpace,
+		pod1,
+	)
+	got, err := i.Pods(context.Background(), "notExistingNamespace")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,13 +380,8 @@ func TestInspectorListsPodsInNotExistingNamespace(t *testing.T) {
 func TestInspectorListsNotExistingPodsInDefaultNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			defaultNameSpace,
-		),
-	}
-	got, err := c.Pods(context.Background(), "default")
+	i := newTestInspector(kubeSystemNameSpace, defaultNameSpace)
+	got, err := i.Pods(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -475,14 +394,12 @@ func TestInspectorListsNotExistingPodsInDefaultNamespace(t *testing.T) {
 func TestInspectorListsExistingPodsInDefaultNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			kubeSystemNameSpace,
-			defaultNameSpace,
-			podDefaultNamespace,
-		),
-	}
-	got, err := c.Pods(context.Background(), "default")
+	i := newTestInspector(
+		kubeSystemNameSpace,
+		defaultNameSpace,
+		podDefaultNamespace,
+	)
+	got, err := i.Pods(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -495,13 +412,8 @@ func TestInspectorListsExistingPodsInDefaultNamespace(t *testing.T) {
 func TestInspectorListsEventsOccuredInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			event1,
-			event2,
-		),
-	}
-	got, err := c.Events(context.Background(), "nginx-ingress")
+	i := newTestInspector(event1, event2)
+	got, err := i.Events(context.Background(), "nginx-ingress")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,13 +441,8 @@ func TestInspectorListsEventsOccuredInAGivenNamespace(t *testing.T) {
 func TestInspectorListsNoEventsOccuredInNotExistingNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			event1,
-			event2,
-		),
-	}
-	got, err := c.Events(context.Background(), "notExistingNamespace")
+	i := newTestInspector(event1, event2)
+	got, err := i.Events(context.Background(), "notExistingNamespace")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -550,12 +457,8 @@ func TestInspectorListsNoEventsOccuredInNotExistingNamespace(t *testing.T) {
 func TestInspectorListsNoEventsOccuredInExistingNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-		),
-	}
-	got, err := c.Events(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace)
+	got, err := i.Events(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,13 +473,8 @@ func TestInspectorListsNoEventsOccuredInExistingNamespace(t *testing.T) {
 func TestInspectorListsConfigMapsInGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			nginxIngressNameSpace,
-			configMapNginxIngress,
-		),
-	}
-	got, err := c.ConfigMaps(context.Background(), "nginx-ingress")
+	i := newTestInspector(nginxIngressNameSpace, configMapNginxIngress)
+	got, err := i.ConfigMaps(context.Background(), "nginx-ingress")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -603,12 +501,8 @@ func TestInspectorListsConfigMapsInGivenNamespace(t *testing.T) {
 func TestInspectorListsEmptyConfigMapListOnNamespaceWithoutConfigMaps(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			nginxIngressNameSpace,
-		),
-	}
-	got, err := c.ConfigMaps(context.Background(), "nginx-ingress")
+	i := newTestInspector(nginxIngressNameSpace)
+	got, err := i.ConfigMaps(context.Background(), "nginx-ingress")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,14 +515,12 @@ func TestInspectorListsEmptyConfigMapListOnNamespaceWithoutConfigMaps(t *testing
 func TestInspectorListsExistingServicesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			teaServiceDefaultNS,
-			coffeeServiceDefaultNS,
-		),
-	}
-	got, err := c.Services(context.Background(), "default")
+	i := newTestInspector(
+		defaultNameSpace,
+		teaServiceDefaultNS,
+		coffeeServiceDefaultNS,
+	)
+	got, err := i.Services(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -664,12 +556,8 @@ func TestInspectorListsExistingServicesInAGivenNamespace(t *testing.T) {
 func TestInspectorListsNotExistingServicesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-		),
-	}
-	got, err := c.Services(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace)
+	got, err := i.Services(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -684,12 +572,8 @@ func TestInspectorListsNotExistingServicesInAGivenNamespace(t *testing.T) {
 func TestInspectorListsNotExistingDeploymentsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-		),
-	}
-	got, err := c.Deployments(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace)
+	got, err := i.Deployments(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -702,15 +586,13 @@ func TestInspectorListsNotExistingDeploymentsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			fooBarNameSpace,
-			deploymentDefaultNS,
-			deploymentFooBarNS,
-		),
-	}
-	got, err := c.Deployments(context.Background(), "default")
+	i := newTestInspector(
+		defaultNameSpace,
+		fooBarNameSpace,
+		deploymentDefaultNS,
+		deploymentFooBarNS,
+	)
+	got, err := i.Deployments(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -732,7 +614,7 @@ func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
 		t.Error(cmp.Diff(want, got))
 	}
 
-	got, err = c.Deployments(context.Background(), "foobar")
+	got, err = i.Deployments(context.Background(), "foobar")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -758,12 +640,8 @@ func TestInspectorListsDeploymentsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsNotExistingStatefulSetsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-		),
-	}
-	got, err := c.StatefulSets(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace)
+	got, err := i.StatefulSets(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -776,13 +654,8 @@ func TestInspectorListsNotExistingStatefulSetsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			statefulSet,
-		),
-	}
-	got, err := c.StatefulSets(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace, statefulSet)
+	got, err := i.StatefulSets(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -808,13 +681,8 @@ func TestInspectorListsStatefulSetsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			replicaSet,
-		),
-	}
-	got, err := c.ReplicaSets(context.Background(), "default")
+	i := newTestInspector(defaultNameSpace, replicaSet)
+	got, err := i.ReplicaSets(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -840,13 +708,8 @@ func TestInspectorListsReplicaSetsInAGivenNamespace(t *testing.T) {
 func TestInspectorListsLeasesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			nginxIngressNameSpace,
-			lease,
-		),
-	}
-	got, err := c.Leases(context.Background(), "nginx-ingress")
+	i := newTestInspector(nginxIngressNameSpace, lease)
+	got, err := i.Leases(context.Background(), "nginx-ingress")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -873,12 +736,8 @@ func TestInspectorListsLeasesInAGivenNamespace(t *testing.T) {
 func TestInspectorListsNotExistingLeasesInAGivenNamespace(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			nginxIngressNameSpace,
-		),
-	}
-	got, err := c.Leases(context.Background(), "nginx-ingress")
+	i := newTestInspector(nginxIngressNameSpace)
+	got, err := i.Leases(context.Background(), "nginx-ingress")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -891,14 +750,12 @@ func TestInspectorListsNotExistingLeasesInAGivenNamespace(t *testing.T) {
 func TestInspectorListIngressClasses(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			nginxIngressNameSpace,
-			ingressClass,
-		),
-	}
-	got, err := c.IngressClasses(context.Background())
+	i := newTestInspector(
+		defaultNameSpace,
+		nginxIngressNameSpace,
+		ingressClass,
+	)
+	got, err := i.IngressClasses(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -926,14 +783,12 @@ func TestInspectorListIngressClasses(t *testing.T) {
 func TestInspectorListIngresses(t *testing.T) {
 	t.Parallel()
 
-	c := inspector.Client{
-		K8sClient: newTestClientset(
-			defaultNameSpace,
-			nginxIngressNameSpace,
-			ingress,
-		),
-	}
-	got, err := c.Ingresses(context.Background(), "default")
+	i := newTestInspector(
+		defaultNameSpace,
+		nginxIngressNameSpace,
+		ingress,
+	)
+	got, err := i.Ingresses(context.Background(), "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -975,6 +830,12 @@ func TestInspectorCollectsHelmInformation(t *testing.T) {
 
 func TestInspectorCollectsHelmDeployments(t *testing.T) {
 	t.Parallel()
+}
+
+// newTestInspector returns Inspector configured to use
+// underlying K8s client and fake K8s runtime objects.
+func newTestInspector(k8sobjects ...k8sruntime.Object) *inspector.Inspector {
+	return &inspector.Inspector{K8sClient: newTestClientset(k8sobjects...)}
 }
 
 // newTestClientset takes K8s runtime objects and returns a k8s fake clientset.
@@ -1091,34 +952,6 @@ var (
 		},
 		Spec: corev1.NodeSpec{
 			ProviderID: "aws:///eu-central-1a/i-088b4f07708408cc0",
-		},
-	}
-
-	nodeAWS2 = &corev1.Node{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Node",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-aws-2",
-			Namespace: "default",
-		},
-		Spec: corev1.NodeSpec{
-			ProviderID: "aws:///eu-central-1a/i-088b4f07708408ca0",
-		},
-	}
-
-	nodeAWS3 = &corev1.Node{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Node",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-aws-3",
-			Namespace: "default",
-		},
-		Spec: corev1.NodeSpec{
-			ProviderID: "aws:///eu-central-1a/i-088b4f07708408va0",
 		},
 	}
 
@@ -1350,10 +1183,7 @@ var (
 	}
 )
 
-var (
-	replicaSetID = "239766ff-5a78-4a1e-8736-7faad1f2e122"
-	daemonSetID  = "319766ff-5c78-4a9a-8736-7faad1f2e234"
-)
+var replicaSetID = "239766ff-5a78-4a1e-8736-7faad1f2e122"
 
 // Pods for testing.
 var (
@@ -1370,47 +1200,6 @@ var (
 					Kind: "ReplicaSet",
 					Name: "nginx-ingress",
 					UID:  types.UID(replicaSetID),
-				},
-			},
-			Labels: map[string]string{
-				"app":                    "nginx-ingress",
-				"app.kubernetes.io/name": "nginx-ingress",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:            "nginx-ingress",
-					Image:           "nginx-ingress",
-					ImagePullPolicy: "Always",
-					Env: []corev1.EnvVar{
-						{
-							Name:  "POD_NAMESPACE",
-							Value: "nginx-ingress",
-						},
-						{
-							Name:  "POD_NAME",
-							Value: "nginx-ingress",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	pod2 = &corev1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "nginx-ingress-2",
-			Namespace: "nginx-ingress",
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind: "DaemonSet",
-					Name: "nginx-ingress",
-					UID:  types.UID(daemonSetID),
 				},
 			},
 			Labels: map[string]string{
@@ -1476,15 +1265,9 @@ var (
 )
 
 // List of pods in default namespace.
-var (
-	podListDefaultNamespace = &corev1.PodList{
-		Items: []corev1.Pod{*podDefaultNamespace},
-	}
-
-	podListEmpty = &corev1.PodList{
-		Items: []corev1.Pod{},
-	}
-)
+var podListDefaultNamespace = &corev1.PodList{
+	Items: []corev1.Pod{*podDefaultNamespace},
+}
 
 // K8s Events used for testing.
 var (
@@ -1551,17 +1334,6 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "service-tea",
 			Namespace: "default",
-		},
-	}
-
-	waterServiceWaterNS = &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "service-water",
-			Namespace: "water",
 		},
 	}
 )

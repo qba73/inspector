@@ -1,7 +1,6 @@
 package inspector
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,16 +25,16 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// Client is an inspector client.
-type Client struct {
+// Inspector is an inspector client.
+type Inspector struct {
 	Verbose       bool
 	K8sClient     kubernetes.Interface
 	CRDClient     *crd.Clientset
 	MetricsClient *metrics.Clientset
 }
 
-// BuildClientFromKubeConfig builds an inspector client ready to interact with the K8s cluster.
-func BuildClientFromKubeConfig() (*Client, error) {
+// BuildInspectorFromKubeConfig builds an inspector client ready to interact with the K8s cluster.
+func BuildInspectorFromKubeConfig() (*Inspector, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -57,18 +56,18 @@ func BuildClientFromKubeConfig() (*Client, error) {
 		return nil, err
 	}
 
-	c := Client{
+	i := Inspector{
 		Verbose:       false,
 		K8sClient:     kubeClient,
 		CRDClient:     crdClient,
 		MetricsClient: metricsClient,
 	}
-	return &c, nil
+	return &i, nil
 }
 
 // ClusterVersion returns K8s version.
-func (c *Client) ClusterVersion() (string, error) {
-	sv, err := c.K8sClient.Discovery().ServerVersion()
+func (i *Inspector) ClusterVersion() (string, error) {
+	sv, err := i.K8sClient.Discovery().ServerVersion()
 	if err != nil {
 		return "", err
 	}
@@ -76,8 +75,8 @@ func (c *Client) ClusterVersion() (string, error) {
 }
 
 // ClusterID returns kube-system namespace UID representing K8s clusterID.
-func (c *Client) ClusterID(ctx context.Context) (string, error) {
-	cluster, err := c.K8sClient.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
+func (i *Inspector) ClusterID(ctx context.Context) (string, error) {
+	cluster, err := i.K8sClient.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -85,8 +84,8 @@ func (c *Client) ClusterID(ctx context.Context) (string, error) {
 }
 
 // Platform returns K8s platform name.
-func (c *Client) Platform(ctx context.Context) (string, error) {
-	nodes, err := c.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+func (i *Inspector) Platform(ctx context.Context) (string, error) {
+	nodes, err := i.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -118,8 +117,8 @@ func platformName(providerID string) string {
 // Nodes returns the total number of [nodes] in a cluster.
 //
 // [nodes]: https://kubernetes.io/docs/concepts/architecture/nodes/
-func (c *Client) Nodes(ctx context.Context) (int, error) {
-	nodes, err := c.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+func (i *Inspector) Nodes(ctx context.Context) (int, error) {
+	nodes, err := i.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return 0, err
 	}
@@ -130,47 +129,58 @@ func (c *Client) Nodes(ctx context.Context) (int, error) {
 //
 // [pods]: https://kubernetes.io/docs/concepts/workloads/pods/
 // [namespace]: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
-func (c *Client) Pods(ctx context.Context, namespace string) (*corev1.PodList, error) {
-	pods, err := c.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Pods(ctx context.Context, namespace string) (*corev1.PodList, error) {
+	pods, err := i.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return pods, nil
 }
 
+// PodLog represents a pod and collected logs
+// from containers in the pod.
+type PodLog struct {
+	Name string `json:"name"`
+	Log  string `json:"log"`
+}
+
 // Podlogs returns logs from [pods] in a given [namespace].
 //
 // [pods]: https://kubernetes.io/docs/concepts/workloads/pods/
 // [namespace]: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
-func (c *Client) Podlogs(ctx context.Context, namespace string) (map[string]string, error) {
-	pods, err := c.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Podlogs(ctx context.Context, namespace string) ([]PodLog, error) {
+	pods, err := i.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	podLogs := make(map[string]string)
+	logs := []PodLog{}
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
-			logReq := c.K8sClient.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+			logReq := i.K8sClient.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
 			res, err := logReq.Stream(ctx)
 			if err != nil {
 				return nil, err
 			}
-			buf := &bytes.Buffer{}
-			_, err = io.Copy(buf, res)
+			log, err := io.ReadAll(res)
 			if err != nil {
-				return nil, err
+				return []PodLog{}, err
 			}
-			podLogs[pod.Name+"_"+container.Name] = buf.String()
+
+			pl := PodLog{
+				Name: fmt.Sprintf("%s_%s", pod.Name, container.Name),
+				Log:  string(log),
+			}
+			logs = append(logs, pl)
 		}
 	}
-	return podLogs, nil
+	return logs, nil
 }
 
 // Events returns [events] for a given namespace.
 //
 // [events]: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/
-func (c *Client) Events(ctx context.Context, namespace string) (*corev1.EventList, error) {
-	events, err := c.K8sClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Events(ctx context.Context, namespace string) (*corev1.EventList, error) {
+	events, err := i.K8sClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +190,8 @@ func (c *Client) Events(ctx context.Context, namespace string) (*corev1.EventLis
 // ConfigMaps returns a list of [config maps] for a given namespace.
 //
 // [config maps]: https://kubernetes.io/docs/concepts/configuration/configmap/
-func (c *Client) ConfigMaps(ctx context.Context, namespace string) (*corev1.ConfigMapList, error) {
-	configMaps, err := c.K8sClient.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) ConfigMaps(ctx context.Context, namespace string) (*corev1.ConfigMapList, error) {
+	configMaps, err := i.K8sClient.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +202,8 @@ func (c *Client) ConfigMaps(ctx context.Context, namespace string) (*corev1.Conf
 // Services returns a list of [services] for a given namespace.
 //
 // [services]: https://kubernetes.io/docs/concepts/services-networking/service/
-func (c *Client) Services(ctx context.Context, namespace string) (*corev1.ServiceList, error) {
-	services, err := c.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Services(ctx context.Context, namespace string) (*corev1.ServiceList, error) {
+	services, err := i.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +213,8 @@ func (c *Client) Services(ctx context.Context, namespace string) (*corev1.Servic
 // Deployments returns a list of [deployments] in a given namespace.
 //
 // [deployments]: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
-func (c *Client) Deployments(ctx context.Context, namespace string) (*appsv1.DeploymentList, error) {
-	deployments, err := c.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Deployments(ctx context.Context, namespace string) (*appsv1.DeploymentList, error) {
+	deployments, err := i.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +224,8 @@ func (c *Client) Deployments(ctx context.Context, namespace string) (*appsv1.Dep
 // StatefulSets returns a list of [stateful sets] in a given namespace.
 //
 // [stateful set]: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
-func (c *Client) StatefulSets(ctx context.Context, namespace string) (*appsv1.StatefulSetList, error) {
-	statefulSets, err := c.K8sClient.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) StatefulSets(ctx context.Context, namespace string) (*appsv1.StatefulSetList, error) {
+	statefulSets, err := i.K8sClient.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -225,8 +235,8 @@ func (c *Client) StatefulSets(ctx context.Context, namespace string) (*appsv1.St
 // ReplicaSets returns a list of [replica sets] in a given namespace.
 //
 // [replica sets]: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-func (c *Client) ReplicaSets(ctx context.Context, namespace string) (*appsv1.ReplicaSetList, error) {
-	replicaSets, err := c.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) ReplicaSets(ctx context.Context, namespace string) (*appsv1.ReplicaSetList, error) {
+	replicaSets, err := i.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -236,8 +246,8 @@ func (c *Client) ReplicaSets(ctx context.Context, namespace string) (*appsv1.Rep
 // Leasess returns a list of [leases] in a given namespace.
 //
 // [leases]: https://kubernetes.io/docs/concepts/architecture/leases/
-func (c *Client) Leases(ctx context.Context, namespace string) (*coordv1.LeaseList, error) {
-	leases, err := c.K8sClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Leases(ctx context.Context, namespace string) (*coordv1.LeaseList, error) {
+	leases, err := i.K8sClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +257,8 @@ func (c *Client) Leases(ctx context.Context, namespace string) (*coordv1.LeaseLi
 // IngressClasses returns a list of [ingress classes] in a cluster.
 //
 // [ingress classes]: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
-func (c *Client) IngressClasses(ctx context.Context) (*netv1.IngressClassList, error) {
-	ingressClasses, err := c.K8sClient.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
+func (i *Inspector) IngressClasses(ctx context.Context) (*netv1.IngressClassList, error) {
+	ingressClasses, err := i.K8sClient.NetworkingV1().IngressClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -258,8 +268,8 @@ func (c *Client) IngressClasses(ctx context.Context) (*netv1.IngressClassList, e
 // Ingresses returns a list of [ingresses] in a given namespace.
 //
 // [ingresses]: https://kubernetes.io/docs/concepts/services-networking/ingress/
-func (c *Client) Ingresses(ctx context.Context, namespace string) (*netv1.IngressList, error) {
-	ingresses, err := c.K8sClient.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) Ingresses(ctx context.Context, namespace string) (*netv1.IngressList, error) {
+	ingresses, err := i.K8sClient.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -269,8 +279,8 @@ func (c *Client) Ingresses(ctx context.Context, namespace string) (*netv1.Ingres
 // CustomResourceDefinitions returns a list of [CRDs] in a cluster.
 //
 // [CRDs]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
-func (c *Client) CustomResourceDefinitions(ctx context.Context) (*apiextv1.CustomResourceDefinitionList, error) {
-	crds, err := c.CRDClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+func (i *Inspector) CustomResourceDefinitions(ctx context.Context) (*apiextv1.CustomResourceDefinitionList, error) {
+	crds, err := i.CRDClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +291,8 @@ func (c *Client) CustomResourceDefinitions(ctx context.Context) (*apiextv1.Custo
 //
 // [nodes]: https://kubernetes.io/docs/concepts/architecture/nodes/
 // [cluster]: https://kubernetes.io/docs/concepts/cluster-administration/
-func (c *Client) ClusterNodes(ctx context.Context) (*corev1.NodeList, error) {
-	nodes, err := c.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+func (i *Inspector) ClusterNodes(ctx context.Context) (*corev1.NodeList, error) {
+	nodes, err := i.K8sClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -292,8 +302,8 @@ func (c *Client) ClusterNodes(ctx context.Context) (*corev1.NodeList, error) {
 // NodeMetrics returns a list of [node metrics] in a cluster.
 //
 // [node metrics]: https://kubernetes.io/docs/concepts/cluster-administration/system-metrics/
-func (c *Client) NodeMetrics(ctx context.Context) (*v1beta1.NodeMetricsList, error) {
-	metrics, err := c.MetricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
+func (i *Inspector) NodeMetrics(ctx context.Context) (*v1beta1.NodeMetricsList, error) {
+	metrics, err := i.MetricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -303,8 +313,8 @@ func (c *Client) NodeMetrics(ctx context.Context) (*v1beta1.NodeMetricsList, err
 // PodMetrics returns a list of [pods metrics] in a given namespace.
 //
 // [pods metrics]: https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/
-func (c *Client) PodMetrics(ctx context.Context, namespace string) (*v1beta1.PodMetricsList, error) {
-	metrics, err := c.MetricsClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
+func (i *Inspector) PodMetrics(ctx context.Context, namespace string) (*v1beta1.PodMetricsList, error) {
+	metrics, err := i.MetricsClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -312,85 +322,85 @@ func (c *Client) PodMetrics(ctx context.Context, namespace string) (*v1beta1.Pod
 }
 
 // RunDiagnostics collects cluster data points for a given namespace.
-func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
-	version, err := c.ClusterVersion()
+func (i *Inspector) Report(ctx context.Context, namespace string) (Report, error) {
+	version, err := i.ClusterVersion()
 	if err != nil {
 		return Report{}, err
 	}
-	id, err := c.ClusterID(ctx)
+	id, err := i.ClusterID(ctx)
 	if err != nil {
 		return Report{}, err
 	}
-	n, err := c.Nodes(ctx)
+	n, err := i.Nodes(ctx)
 	if err != nil {
 		return Report{}, err
 	}
-	p, err := c.Platform(ctx)
-	if err != nil {
-		return Report{}, err
-	}
-
-	pods, err := c.Pods(ctx, namespace)
+	p, err := i.Platform(ctx)
 	if err != nil {
 		return Report{}, err
 	}
 
-	podLogs, err := c.Podlogs(ctx, namespace)
+	pods, err := i.Pods(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	events, err := c.Events(ctx, namespace)
+	podLogs, err := i.Podlogs(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	configMaps, err := c.ConfigMaps(ctx, namespace)
+	events, err := i.Events(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	services, err := c.Services(ctx, namespace)
+	configMaps, err := i.ConfigMaps(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	deployments, err := c.Deployments(ctx, namespace)
+	services, err := i.Services(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	statefulSets, err := c.StatefulSets(ctx, namespace)
+	deployments, err := i.Deployments(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	replicaSets, err := c.ReplicaSets(ctx, namespace)
+	statefulSets, err := i.StatefulSets(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	leases, err := c.Leases(ctx, namespace)
+	replicaSets, err := i.ReplicaSets(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	ingressClasses, err := c.IngressClasses(ctx)
+	leases, err := i.Leases(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	ingresses, err := c.Ingresses(ctx, namespace)
+	ingressClasses, err := i.IngressClasses(ctx)
 	if err != nil {
 		return Report{}, err
 	}
 
-	crds, err := c.CustomResourceDefinitions(ctx)
+	ingresses, err := i.Ingresses(ctx, namespace)
 	if err != nil {
 		return Report{}, err
 	}
 
-	clusterNodes, err := c.ClusterNodes(ctx)
+	crds, err := i.CustomResourceDefinitions(ctx)
+	if err != nil {
+		return Report{}, err
+	}
+
+	clusterNodes, err := i.ClusterNodes(ctx)
 	if err != nil {
 		return Report{}, err
 	}
@@ -432,7 +442,7 @@ type Report struct {
 	Nodes          int                                    `json:"nodes"`
 	Platform       string                                 `json:"platform"`
 	Pods           *corev1.PodList                        `json:"pods"`
-	Podlogs        map[string]string                      `json:"pod_logs"`
+	Podlogs        []PodLog                               `json:"pod_logs"`
 	Events         *corev1.EventList                      `json:"events"`
 	ConfigMaps     *corev1.ConfigMapList                  `json:"config_maps"`
 	Services       *corev1.ServiceList                    `json:"services"`
@@ -466,14 +476,14 @@ func Main() int {
 		return 0
 	}
 
-	c, err := BuildClientFromKubeConfig()
+	i, err := BuildInspectorFromKubeConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", usage)
 		return 1
 	}
-	c.Verbose = *verbose
+	i.Verbose = *verbose
 
-	report, err := c.Report(context.Background(), *namespace)
+	report, err := i.Report(context.Background(), *namespace)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", usage)
 		return 1
