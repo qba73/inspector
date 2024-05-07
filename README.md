@@ -5,6 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/qba73/inspector)](https://goreportcard.com/report/github.com/qba73/inspector)
 ![GitHub](https://img.shields.io/github/license/qba73/inspector)
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8889/badge)](https://www.bestpractices.dev/projects/8889)
 
 ![Magical gopher logo](img/inspectork.png)
 
