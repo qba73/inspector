@@ -20,7 +20,7 @@ Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/t
    go install github.com/qba73/inspector/cmd/inspector@latest
    ```
 
-1) Run it:
+1) Get help:
 
    ```shell
    inspector -h
@@ -34,6 +34,18 @@ Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/t
    Collect K8s and NIC diagnostics in the given namespace
 
    In verbose mode (-v), prints out progess, steps and all data points to stdout.
+   ```
+
+1) Collect data points from `default` namespace
+
+   ```shell
+   inspector -n default > default.json
+   ```
+
+1) Collect data points from `nginx-ingress` namespace
+
+   ```shell
+   inspector -n nginx-ingress > nginx-ingress.json
    ```
 
 ### How to install it and use as a `kubectl` plugin
@@ -73,6 +85,20 @@ Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/t
    Collect K8s and Ingress Controller diagnostics in the given namespace.
 
    In verbose mode (-v), prints out progess, steps and all data points to stdout.
+   ```
+
+1) Collect data points from `default` namespace
+
+   Note that `inspector`'s default namespace is `default`.
+
+   ```shell
+   inspector > default.json
+   ```
+
+1) Collect data points from `nginx-ingress` namespace
+
+   ```shell
+   inspector -n nginx-ingress > nginx-ingress.json
    ```
 
 ## How it works
