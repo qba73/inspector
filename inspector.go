@@ -416,6 +416,7 @@ func (c *Client) Report(ctx context.Context, namespace string) (Report, error) {
 	}, nil
 }
 
+// ReportJSON returns collected metrics in a JSON format.
 func ReportJSON(rep Report) (string, error) {
 	b, err := json.MarshalIndent(rep, "", "  ")
 	if err != nil {

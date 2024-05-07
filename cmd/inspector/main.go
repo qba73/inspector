@@ -7,6 +7,8 @@ Usage:
 
 The flags are:
 
+	-h
+		Show help.
 	-v
 	    Print out to terminal all operations.
 	-n
