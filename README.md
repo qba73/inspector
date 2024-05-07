@@ -78,9 +78,10 @@ Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/t
 
    ```shell
    kubectl inspector -h
+
    Usage:
 
-   inspector [-h] [-v] [-n] namespace
+      inspector [-h] [-v] [-n] namespace
 
    Collect K8s and Ingress Controller diagnostics in the given namespace.
 
