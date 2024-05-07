@@ -1,43 +1,87 @@
+# Inspector
+
 [![Go Reference](https://pkg.go.dev/badge/github.com/qba73/inspector.svg)](https://pkg.go.dev/github.com/qba73/inspector)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/qba73/inspector)
 [![Go Report Card](https://goreportcard.com/badge/github.com/qba73/inspector)](https://goreportcard.com/report/github.com/qba73/inspector)
 ![GitHub](https://img.shields.io/github/license/qba73/inspector)
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
 
-# inspector
-
 Before using `inspector` you need to have [kubectl](https://kubernetes.io/docs/tasks/tools/) binary installed and configured (config file `${HOME}/.kube/config`).
 
-`inspector` is a CLI tool and a Kubernetes plugin for running cluster diagnostics, collecting cluster and Ingress Controller logs and diagnostics, and generating reports.
+`inspector` is a CLI tool and a [Kubernetes plugin](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/) for running Cluster and Ingress Conroller diagnostics, collecting Cluster and Ingress Controller logs and generating reports.
 
-Here's how to install it and use as a CLI tool:
+## How to install `inspector`
 
-```shell
-go install github.com/qba73/inspector/cmd/inspector@latest
-```
+### How to install it and use as a CLI tool
 
-To run it:
+1) Install Go binary
 
-```shell
-inspector
-```
+   ```shell
+   go install github.com/qba73/inspector/cmd/inspector@latest
+   ```
 
-```shell
-Usage:
-   inspector [-v] [-h] -n namespace
+1) Run it:
 
-Collect K8s and NIC diagnostics in the given namespace
+   ```shell
+   inspector -h
+   ```
 
-In verbose mode (-v), prints out progess, steps and all data points to stdout.
-```
+   ```shell
+   Usage:
+
+      inspector [-v] [-h] [-n] <namespace>
+
+   Collect K8s and NIC diagnostics in the given namespace
+
+   In verbose mode (-v), prints out progess, steps and all data points to stdout.
+   ```
+
+### How to install it and use as a `kubectl` plugin
+
+1) Clone the repo.
+1) Build inspector.
+
+   ```shell
+   go build -o kubectl-inspector ./cmd/inspector/main.go
+   ```
+
+1) Copy the binary to a dir in your `$HOME`, for example:
+
+   ```shell
+   cp kubectl-inspector /usr/local/bin
+   ```
+
+1) Verify if the `kubectl` discovers the plugin:
+
+   ```shell
+   kubectl plugin list
+   ```
+
+   ```shell
+   [...]
+   /usr/local/bin/kubectl-inspector
+   ```
+
+1) Verify `inspector` can be run using `kubectl`:
+
+   ```shell
+   kubectl inspector -h
+   Usage:
+
+   inspector [-h] [-v] [-n] namespace
+
+   Collect K8s and Ingress Controller diagnostics in the given namespace.
+
+   In verbose mode (-v), prints out progess, steps and all data points to stdout.
+   ```
 
 ## How it works
 
-The program checks and collects K8s cluster and [Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress/) diagnostics data. It prints out data to the stdout. This allows the output to be piped to other tools for further parsing and processing.
+The program collects K8s cluster and [NGINX Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress/) diagnostics data. It prints out data in the JSON format to the stdout. This allows the output to be piped to other tools (for example [jq](https://jqlang.github.io/jq/)) for further parsing and processing.
 
 ## Collected data points
 
-Currently collected data:
+Currently `inspector` collects following data points:
 
 - K8s version
 - K8s cluster id
