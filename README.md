@@ -134,3 +134,7 @@ Planned:
 - Ingress Controller stats, options and configuration
 
 Future releases will add support for collecting [K8s Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/) diagnostics.
+
+## Contributing
+
+If you'd like to contribute to **Inspector**, please read the [Contributing guide](CONTRIBUTING.md).
