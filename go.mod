@@ -2,6 +2,8 @@ module github.com/qba73/inspector
 
 go 1.23
 
+toolchain go1.23.1
+
 require (
 	github.com/google/go-cmp v0.6.0
 	k8s.io/api v0.31.1
