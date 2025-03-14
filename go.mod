@@ -7,10 +7,10 @@ toolchain go1.24.1
 require (
 	github.com/google/go-cmp v0.7.0
 	k8s.io/api v0.32.3
-	k8s.io/apiextensions-apiserver v0.31.1
+	k8s.io/apiextensions-apiserver v0.32.3
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
-	k8s.io/metrics v0.32.3
+	k8s.io/metrics v0.31.2
 )
 
 require (
