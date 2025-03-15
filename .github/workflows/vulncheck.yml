@@ -12,4 +12,5 @@ jobs:
           with:
             go-version-input: 'stable'
             check-latest: true
+            go-package: ./...
   
