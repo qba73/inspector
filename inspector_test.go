@@ -373,7 +373,7 @@ func TestInspectorListsPodsInNotExistingNamespace(t *testing.T) {
 	}
 	want := &corev1.PodList{}
 	if !cmp.Equal(want, got) {
-		t.Errorf(cmp.Diff(want, got))
+		t.Error(cmp.Diff(want, got))
 	}
 }
 
@@ -387,7 +387,7 @@ func TestInspectorListsNotExistingPodsInDefaultNamespace(t *testing.T) {
 	}
 	want := &corev1.PodList{}
 	if !cmp.Equal(want, got) {
-		t.Errorf(cmp.Diff(want, got))
+		t.Error(cmp.Diff(want, got))
 	}
 }
 
@@ -405,7 +405,7 @@ func TestInspectorListsExistingPodsInDefaultNamespace(t *testing.T) {
 	}
 	want := podListDefaultNamespace
 	if !cmp.Equal(want, got) {
-		t.Errorf(cmp.Diff(want, got))
+		t.Error(cmp.Diff(want, got))
 	}
 }
 
