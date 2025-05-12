@@ -6,6 +6,7 @@
 ![GitHub](https://img.shields.io/github/license/qba73/inspector)
 [![Tests](https://github.com/qba73/inspector/actions/workflows/test.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/test.yml)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8889/badge)](https://www.bestpractices.dev/projects/8889)
+[![Scorecard](https://github.com/qba73/inspector/actions/workflows/scorecard.yml/badge.svg)](https://github.com/qba73/inspector/actions/workflows/scorecard.yml)
 
 ![Magical gopher logo](img/inspectork.png)
 
